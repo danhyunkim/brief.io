@@ -27,7 +27,8 @@ export function FileUploader({
       const formData = new FormData();
       formData.append("file", file);
       const res = await fetch(endpoint, { method: "POST", body: formData });
-      const json = await res.json();
+      // Tell TS that whatever comes back is 'unknown' (not 'any')
+      const json: unknown = await res.json();
       onUploadComplete?.(json);
     } catch (err: unknown) {
       console.error(err);
