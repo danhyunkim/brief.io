@@ -7,7 +7,8 @@ interface FileUploaderProps {
   endpoint: string;
   acceptedTypes?: string[];
   className?: string;
-  onUploadComplete?: (response: any) => void;
+  /** Called when upload completes; receives whatever `/api/upload` returned */
+  onUploadComplete?: (response: unknown) => void;
 }
 
 export function FileUploader({
@@ -28,7 +29,7 @@ export function FileUploader({
       const res = await fetch(endpoint, { method: "POST", body: formData });
       const json = await res.json();
       onUploadComplete?.(json);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
       alert("Upload failed.");
     } finally {
@@ -39,12 +40,9 @@ export function FileUploader({
   const onDrop = async (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragOver(false);
-    if (!e.dataTransfer.files.length) return;
-    const file = e.dataTransfer.files[0];
-    if (
-      acceptedTypes.length &&
-      !acceptedTypes.includes(file.type)
-    ) {
+    const [file] = Array.from(e.dataTransfer.files);
+    if (!file) return;
+    if (acceptedTypes.length && !acceptedTypes.includes(file.type)) {
       alert(`Please upload one of: ${acceptedTypes.join(", ")}`);
       return;
     }
@@ -54,12 +52,9 @@ export function FileUploader({
   const onFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    if (!e.target.files?.length) return;
-    const file = e.target.files[0];
-    if (
-      acceptedTypes.length &&
-      !acceptedTypes.includes(file.type)
-    ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (acceptedTypes.length && !acceptedTypes.includes(file.type)) {
       alert(`Please upload one of: ${acceptedTypes.join(", ")}`);
       return;
     }
