@@ -7,7 +7,7 @@ interface FileUploaderProps {
   endpoint: string;
   acceptedTypes?: string[];
   className?: string;
-  onUploadComplete?: (response: any) => void;
+  onUploadComplete?: (response: unknown) => void;
 }
 
 export function FileUploader({
@@ -28,7 +28,7 @@ export function FileUploader({
       const res = await fetch(endpoint, { method: "POST", body: formData });
       const json = await res.json();
       onUploadComplete?.(json);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
       alert("Upload failed.");
     } finally {
