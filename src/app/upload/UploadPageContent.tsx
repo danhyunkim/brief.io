@@ -8,7 +8,7 @@ export default function UploadPageContent() {
     <main className="max-w-xl mx-auto py-16">
       <h1 className="text-2xl font-semibold mb-4">Upload a Contract</h1>
       <FileUploader
-        endpoint="/api/upload"
+        endpoint="/api/summarize"
         acceptedTypes={["application/pdf"]}
         className="border-2 border-dashed rounded-lg p-8 text-center hover:border-blue-400 transition-colors"
       />
