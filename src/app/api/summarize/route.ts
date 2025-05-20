@@ -5,28 +5,25 @@ import pdfParse from "pdf-parse";
 
 export const config = {
   api: {
-    bodyParser: false, // we’ll handle FormData ourselves
+    bodyParser: false,
   },
 };
 
 export async function POST(req: Request) {
-  // 1) Pull the file out of the multipart FormData
+  // 1) Parse the incoming multipart/form-data
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
   if (!file) {
-    return NextResponse.json(
-      { error: "No file provided" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  // 2) Turn it into a Buffer and extract text
+  // 2) Extract raw bytes and parse text
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
   const { text } = await pdfParse(buffer);
 
-  // 3) Call OpenAI with your Corner Store Legal Summaries prompt
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  // 3) Call OpenAI
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
   const resp = await openai.chat.completions.create({
     model: "gpt-4o",
     response_format: { type: "json_object" },
@@ -34,7 +31,7 @@ export async function POST(req: Request) {
       {
         role: "system",
         content: `
-You are an expert contract analyst built for small and mid-sized businesses. 
+You are Ironguard.io's expert contract analyst built for small and mid-sized businesses. 
 Given any contract or official document—whether in real estate, healthcare, finance, public accounting, or other regulated industry—your job is to:
 
 1. Produce a **one-page (≈300-word) executive summary** that highlights the key obligations, rights, and overall risk posture.
@@ -44,16 +41,25 @@ Given any contract or official document—whether in real estate, healthcare, fi
 5. Operate with zero-setup: assume the user has simply uploaded a PDF and expects a fully self-contained JSON response. 
 
 Be concise, precise, and industry-agnostic in your analysis using a professional tone.
-Return **only** valid JSON with two keys:
-- \`summary\`: string
-- \`risks\`: array of up to 5 objects \{ title: string; clause: string; page: number; citations: string[]; blindSpot: string \}
-`
+
+Return only valid JSON:
+{
+  summary: string,
+  risks: Array<{
+    title: string;
+    clause: string;
+    page: number;
+    citations: string[];
+    blindSpot: string;
+  }>
+}
+        `,
       },
       { role: "user", content: text },
     ],
   });
 
-  // 4) Parse and return the structured JSON
+  // 4) Parse and return JSON
   const payload = JSON.parse(resp.choices[0].message.content as string);
   return NextResponse.json(payload);
 }
