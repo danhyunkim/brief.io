@@ -2,6 +2,9 @@
 import { NextResponse } from "next/server";
 import { OpenAI } from "openai";
 import pdfParse from "pdf-parse";
+import { Buffer } from "buffer";
+
+export const runtime = "nodejs"
 
 export const config = {
   api: {
