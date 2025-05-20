@@ -1,11 +1,8 @@
 // src/app/api/upload/route.ts
 import { NextResponse } from "next/server";
 
-export const config = {
-  api: {
-    bodyParser: false, // we’ll handle form data ourselves
-  },
-};
+export const config = {api: { bodyParser: false }, };
+// we’ll handle form data ourselves 
 
 export async function POST(req: Request) {
   // 1. Grab the File from the incoming FormData

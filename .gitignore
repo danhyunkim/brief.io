@@ -12,3 +12,4 @@ out/
 
 # system
 .DS_Store
+.vercel
