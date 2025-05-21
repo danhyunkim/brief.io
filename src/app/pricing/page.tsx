@@ -27,7 +27,7 @@ export default function PricingPage() {
   }
 
   return (
-    <main className="max-w-3xl mx-auto py-20 space-y-12">
+    <main className="max-w-2xl mx-auto px-6 py-12">
       <h1 className="text-4xl font-semibold text-center">Choose Your Plan</h1>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Pay-As-You-Go */}
