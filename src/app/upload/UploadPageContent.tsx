@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { UploadCloud, Loader2 } from "lucide-react";
 import FeedbackButtons from "@/components/FeedbackButtons";
 import { useSession } from "@supabase/auth-helpers-react";
-import { RiskFlag, DocumentRow } from "@/types";
+import { RiskFlag } from "@/types";
 
 
 

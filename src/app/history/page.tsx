@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useSession } from "@supabase/auth-helpers-react";
-import type { RiskFlag, DocumentRow } from "@/types";
+import type { DocumentRow } from "@/types";
 
 
 export default function HistoryPage() {
