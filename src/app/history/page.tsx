@@ -1,24 +1,26 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useSession } from "@supabase/auth-helpers-react";
+import type { RiskFlag, DocumentRow } from "@/types";
+
 
 export default function HistoryPage() {
   const session = useSession();
   const accessToken = session?.access_token || "";
-  const [docs, setDocs] = useState<any[]>([]);
+  const [docs, setDocs] = useState<DocumentRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!accessToken) return;
-    async function fetchDocs() {
+    async function fetchDocs(): Promise<void> {
       const res = await fetch("/api/history", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const data = await res.json();
-      setDocs(data.documents || []);
+      // Type cast the response!
+      setDocs((data.documents as DocumentRow[]) || []);
       setLoading(false);
     }
-    fetchDocs();
+    if (accessToken) fetchDocs();
   }, [accessToken]);
 
   return (
@@ -30,7 +32,7 @@ export default function HistoryPage() {
         <div className="text-muted-foreground">No documents yet.</div>
       ) : (
         <ul className="space-y-6">
-          {docs.map((doc) => (
+          {docs.map((doc: DocumentRow) => (
             <li
               key={doc.id}
               className="p-4 bg-background border rounded-lg flex flex-col gap-1"

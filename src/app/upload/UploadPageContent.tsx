@@ -1,14 +1,18 @@
+// src/app/upload/UploadPageContent.tsx
 "use client";
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { UploadCloud, Loader2 } from "lucide-react";
 import FeedbackButtons from "@/components/FeedbackButtons";
 import { useSession } from "@supabase/auth-helpers-react";
+import { RiskFlag, DocumentRow } from "@/types";
+
+
 
 export default function UploadPageContent() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
-  const [risks, setRisks] = useState<any[]>([]);
+  const [risks, setRisks] = useState<RiskFlag[]>([]);
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,10 +40,10 @@ export default function UploadPageContent() {
     setLoading(true);
     setError(null);
     try {
+      // 1. Analyze PDF via summarize API
       const formData = new FormData();
       formData.append("file", selectedFile);
 
-      // Call your summarize endpoint
       const res = await fetch("/api/summarize", {
         method: "POST",
         body: formData,
@@ -47,16 +51,34 @@ export default function UploadPageContent() {
       if (!res.ok) throw new Error("Failed to analyze document.");
       const data = await res.json();
 
-      // Here, optionally, POST data + file info to your /api/documents endpoint to store document metadata & get documentId
-      // For now, just fake a documentId for FeedbackButtons:
-      setSummary(data.summary);
-      setRisks(data.risks);
-      setDocumentId(crypto.randomUUID()); // TODO: Use real documentId from backend if you store to DB
-    } catch (err: any) {
-      setError(err?.message || "Upload failed. Try again.");
+      // 2. Store document in Supabase via /api/documents
+      const saveRes = await fetch("/api/documents", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          filename: selectedFile.name,
+          summary: data.summary,
+          risks: data.risks,
+        }),
+      });
+      const savedDoc = await saveRes.json();
+      if (savedDoc.document) {
+        setSummary(savedDoc.document.summary);
+        setRisks(savedDoc.document.risks);
+        setDocumentId(savedDoc.document.id); // Use for feedback, history, etc.
+      } else {
+        throw new Error(savedDoc.error || "Could not save document.");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Upload failed. Try again.";
+      setError(message);
     } finally {
       setLoading(false);
-    }
+}
   };
 
   return (
@@ -118,7 +140,7 @@ export default function UploadPageContent() {
           <section className="mb-10">
             <h2 className="text-lg font-medium mb-2">Top 5 Risk Flags</h2>
             <ul className="space-y-4">
-              {risks.map((risk, idx) => (
+              {risks.map((risk: RiskFlag, idx: number) => (
                 <li key={idx} className="p-4 bg-background border rounded-lg">
                   <div className="font-semibold">{risk.title}</div>
                   <div className="text-sm mt-1 mb-2 text-muted-foreground">
@@ -129,7 +151,7 @@ export default function UploadPageContent() {
                     Citations: {risk.citations?.join(", ") || "None"}
                   </div>
                   <div className="text-xs italic mt-1 text-warning-foreground">
-                    Potential blind spots: {risk.blindSpot}
+                    Potential blind spot: {risk.blindSpot}
                   </div>
                 </li>
               ))}

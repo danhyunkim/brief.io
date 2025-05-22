@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import FeedbackButtons from "@/components/FeedbackButtons";
 import { useSession } from "@supabase/auth-helpers-react";
+import { DocumentRow, RiskFlag } from "@/types";
 
 export default function DocumentDetailPage() {
   const params = useParams();
@@ -11,7 +12,7 @@ export default function DocumentDetailPage() {
   const session = useSession();
   const accessToken = session?.access_token || "";
 
-  const [doc, setDoc] = useState<any>(null);
+  const [doc, setDoc] = useState<DocumentRow | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -20,8 +21,8 @@ export default function DocumentDetailPage() {
       const res = await fetch(`/api/document?id=${docId}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      const data = await res.json();
-      setDoc(data.document || null);
+      const { document } = await res.json();
+      setDoc(document as DocumentRow);
       setLoading(false);
     }
     fetchDoc();
@@ -42,7 +43,7 @@ export default function DocumentDetailPage() {
         <section className="mb-10">
           <h2 className="text-lg font-medium mb-2">Top 5 Risk Flags</h2>
           <ul className="space-y-4">
-            {doc.risks.map((risk: any, idx: number) => (
+            {doc?.risks.map((risk: RiskFlag, idx: number) => (
               <li key={idx} className="p-4 bg-background border rounded-lg">
                 <div className="font-semibold">{risk.title}</div>
                 <div className="text-sm mt-1 mb-2 text-muted-foreground">
