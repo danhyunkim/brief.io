@@ -3,21 +3,14 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-client";
 import { getUserFromRequest } from "@/lib/auth";
 
-// Utility to get the user from an access token (bearer in Authorization header)
-async function getUser(req: Request) {
-  const accessToken = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!accessToken) return null;
-  const { data, error } = await supabase.auth.getUser(accessToken);
-  if (error || !data.user) return null;
-  return data.user;
-}
 
 export async function GET(req: Request) {
+  // 1) Authenticate user
   const user = await getUserFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  // Fetch documents for this user, order by newest first
+  // 2) Fetch documents for this user, newest first
   const { data, error } = await supabase
     .from("documents")
     .select("id, filename, uploaded_at")
