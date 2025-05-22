@@ -1,9 +1,6 @@
 // src/app/layout.tsx
-"use client";
 
-import { SessionContextProvider } from "@supabase/auth-helpers-react";
-import { createPagesBrowserClient } from "@supabase/auth-helpers-nextjs";
-import { useState } from "react";
+import Providers from "@/components/Providers";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -19,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Ironguard",
-  description: "AI-powered contract summaries for SMBs",
+  description: "AI-powered contract analysis for SMBs",
 };
 
 export default function RootLayout({
@@ -27,15 +24,12 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Only on client: create supabase client once per session
-  const [supabaseClient] = useState(() => createPagesBrowserClient());
-
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <SessionContextProvider supabaseClient={supabaseClient}>
+        <Providers>
           {children}
-        </SessionContextProvider>
+        </Providers>
       </body>
     </html>
   );
