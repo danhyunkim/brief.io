@@ -51,7 +51,7 @@ export default function DocumentDetailPage() {
                   <span className="ml-2 text-xs">Page {risk.page}</span>
                 </div>
                 <div className="text-xs text-accent-foreground">
-                  Cites: {risk.citations?.join(", ") || "None"}
+                  Citations: {risk.citations?.join(", ") || "None"}
                 </div>
                 <div className="text-xs italic mt-1 text-warning-foreground">
                   Blind spot: {risk.blindSpot}

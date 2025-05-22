@@ -1,6 +1,7 @@
 // src/app/api/history/route.ts
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-client";
+import { getUserFromRequest } from "@/lib/auth";
 
 // Utility to get the user from an access token (bearer in Authorization header)
 async function getUser(req: Request) {
@@ -12,14 +13,14 @@ async function getUser(req: Request) {
 }
 
 export async function GET(req: Request) {
-  const user = await getUser(req);
+  const user = await getUserFromRequest(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   // Fetch documents for this user, order by newest first
   const { data, error } = await supabase
     .from("documents")
-    .select("*")
+    .select("id, filename, uploaded_at")
     .eq("user_id", user.id)
     .order("uploaded_at", { ascending: false });
 
