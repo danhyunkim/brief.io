@@ -1,18 +1,27 @@
-// src/components/RequireAuth.tsx
 "use client";
-
-import { useRouter } from "next/navigation";
-import { useSession } from "@supabase/auth-helpers-react";
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSessionContext } from "@supabase/auth-helpers-react";
 
-export function RequireAuth({ children }: { children: React.ReactNode }) {
-  const session = useSession();
+export default function RequireAuth({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { session } = useSessionContext();
   const router = useRouter();
 
   useEffect(() => {
-    if (!session) router.replace("/auth");
+    if (!session) {
+      router.replace("/auth");  // not logged in
+    }
   }, [session, router]);
 
-  if (!session) return null; // or a spinner
+  // Once authenticated, you could also check paywall status here:
+  // fetch("/api/documents?countOnly=true", …) and redirect to /pricing if needed
+
+  if (!session) {
+    return null; // or a spinner
+  }
   return <>{children}</>;
 }

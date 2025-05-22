@@ -34,7 +34,7 @@ export default function UploadPageContent() {
   // Handle file upload and summary fetch
   const handleUpload = async () => {
     if (!selectedFile) {
-      setError("Please select a PDF to upload.");
+      setError("Please select a document to upload.");
       return;
     }
     setLoading(true);
@@ -48,7 +48,15 @@ export default function UploadPageContent() {
         method: "POST",
         body: formData,
       });
-      if (!res.ok) throw new Error("Failed to analyze document.");
+      if (res.status === 402) {
+        // paywall triggered
+        window.location.href = "/pricing"; 
+        return;
+      }
+      if (!res.ok) {
+        throw new Error("Document analysis failed.");
+      }
+
       const data = await res.json();
 
       // 2. Store document in Supabase via /api/documents
@@ -64,6 +72,11 @@ export default function UploadPageContent() {
           risks: data.risks,
         }),
       });
+      if (res.status === 402) {
+        // paywall triggered
+        window.location.href = "/pricing"; 
+        return;
+      }
       const savedDoc = await saveRes.json();
       if (savedDoc.document) {
         setSummary(savedDoc.document.summary);
@@ -92,7 +105,7 @@ export default function UploadPageContent() {
           >
             <UploadCloud className="h-10 w-10 text-blue-600 mb-2" />
             <span className="font-medium mb-1">
-              {selectedFile ? selectedFile.name : "Click to select or drag in a PDF"}
+              {selectedFile ? selectedFile.name : "Click to select or drag-and-drop"}
             </span>
             <input
               ref={fileInputRef}

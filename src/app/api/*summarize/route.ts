@@ -1,30 +1,69 @@
 // src/app/api/summarize/route.ts
 import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase-client";
 import { OpenAI } from "openai";
 
-export const runtime = "nodejs";
+type SupabaseUser = { id: string };
 
-export const config = {
-  api: {
-    bodyParser: false, // we’ll parse FormData ourselves
-  },
-};
+// 1) Extract user from Bearer token
+async function getUser(req: Request): Promise<SupabaseUser | null> {
+  const token = req.headers.get("authorization")?.replace("Bearer ", "");
+  if (!token) return null;
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) return null;
+  return { id: data.user.id };
+}
+
+// 2) Check if user has an active subscription
+async function hasActiveSubscription(userId: string): Promise<boolean> {
+  const { count, error } = await supabase
+    .from("subscriptions")
+    .select("id", { head: true, count: "exact" })
+    .eq("user_id", userId)
+    .eq("status", "active");
+  if (error) throw new Error(error.message);
+  return (count ?? 0) > 0;
+}
+
+export const runtime = "nodejs";
+export const config = { api: { bodyParser: false } };
 
 export async function POST(req: Request) {
-  // 1) Parse the incoming multipart/form-data
+  // → Get user
+  const user = await getUser(req);
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // → Paywall guard: count docs
+  const { count, error: countErr } = await supabase
+    .from("documents")
+    .select("id", { head: true, count: "exact" })
+    .eq("user_id", user.id);
+  if (countErr) {
+    return NextResponse.json({ error: countErr.message }, { status: 500 });
+  }
+
+  const paid = await hasActiveSubscription(user.id);
+  if ((count ?? 0) >= 1 && !paid) {
+    return NextResponse.json(
+      { error: "Paywall: Free tier used. Please upgrade or pay." },
+      { status: 402 }
+    );
+  }
+
+  // → Handle file upload & parsing
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
   if (!file) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  // 2) Dynamically load pdf-parse so its tests don’t run at build time
   const { default: pdfParse } = await import("pdf-parse");
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
+  const buffer = Buffer.from(await file.arrayBuffer());
   const { text } = await pdfParse(buffer);
 
-  // 3) Call OpenAI
+  // → Call OpenAI
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
   const resp = await openai.chat.completions.create({
     model: "gpt-4o",
@@ -59,7 +98,10 @@ Return only valid JSON:
     ],
   });
 
-  // 4) Parse & return
-  const payload = JSON.parse(resp.choices[0].message.content as string);
+  // → Parse & return
+  const payload = JSON.parse(
+    resp.choices[0].message.content as string
+  ) as { summary: string; risks: unknown[] };
+
   return NextResponse.json(payload);
 }
