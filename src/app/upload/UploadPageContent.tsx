@@ -7,8 +7,6 @@ import FeedbackButtons from "@/components/FeedbackButtons";
 import { useSession } from "@supabase/auth-helpers-react";
 import { RiskFlag } from "@/types";
 
-
-
 export default function UploadPageContent() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [summary, setSummary] = useState<string | null>(null);
@@ -37,8 +35,14 @@ export default function UploadPageContent() {
       setError("Please select a document to upload.");
       return;
     }
+    if (!accessToken) {
+      setError("Please sign in to analyze a document.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
+
     try {
       // 1. Analyze PDF via summarize API
       const formData = new FormData();
@@ -47,10 +51,17 @@ export default function UploadPageContent() {
       const res = await fetch("/api/summarize", {
         method: "POST",
         body: formData,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       });
+
+      if (res.status === 401) {
+        setError("Session expired or invalid. Please sign in again.");
+        return;
+      }
       if (res.status === 402) {
-        // paywall triggered
-        window.location.href = "/pricing"; 
+        window.location.href = "/pricing"; // paywall
         return;
       }
       if (!res.ok) {
@@ -64,7 +75,7 @@ export default function UploadPageContent() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           filename: selectedFile.name,
@@ -72,9 +83,13 @@ export default function UploadPageContent() {
           risks: data.risks,
         }),
       });
-      if (res.status === 402) {
-        // paywall triggered
-        window.location.href = "/pricing"; 
+
+      if (saveRes.status === 401) {
+        setError("Session expired or invalid. Please sign in again.");
+        return;
+      }
+      if (saveRes.status === 402) {
+        window.location.href = "/pricing";
         return;
       }
       const savedDoc = await saveRes.json();
@@ -91,7 +106,7 @@ export default function UploadPageContent() {
       setError(message);
     } finally {
       setLoading(false);
-}
+    }
   };
 
   return (
