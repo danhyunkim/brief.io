@@ -2,11 +2,11 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-client";
 import { OpenAI } from "openai";
+import pdfParse from "pdf-parse";
 import { Buffer } from "buffer";
 
 type SupabaseUser = { id: string };
 
-// 1) Extract user from Bearer token
 async function getUser(req: Request): Promise<SupabaseUser | null> {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
   if (!token) return null;
@@ -15,7 +15,6 @@ async function getUser(req: Request): Promise<SupabaseUser | null> {
   return { id: data.user.id };
 }
 
-// 2) Check if user has an active subscription
 async function hasActiveSubscription(userId: string): Promise<boolean> {
   const { count, error } = await supabase
     .from("subscriptions")
@@ -30,13 +29,11 @@ export const runtime = "nodejs";
 export const config = { api: { bodyParser: false } };
 
 export async function POST(req: Request) {
-  // → Get user
   const user = await getUser(req);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // → Paywall guard: count docs
   const { count, error: countErr } = await supabase
     .from("documents")
     .select("id", { head: true, count: "exact" })
@@ -53,20 +50,15 @@ export async function POST(req: Request) {
     );
   }
 
-  // → Handle file upload & parsing
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
   if (!file) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  // require inside the handler to avoid bundler issues
-  // @ts-ignore
-  const pdfParse: typeof import("pdf-parse") = require("pdf-parse");
   const buffer = Buffer.from(await file.arrayBuffer());
   const { text } = await pdfParse(buffer);
 
-  // → Call OpenAI
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
   const resp = await openai.chat.completions.create({
     model: "gpt-4o",
@@ -101,7 +93,6 @@ Return only valid JSON:
     ],
   });
 
-  // → Parse & return
   const payload = JSON.parse(
     resp.choices[0].message.content as string
   ) as { summary: string; risks: unknown[] };
