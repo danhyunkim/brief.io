@@ -4,10 +4,6 @@ import { supabase } from "@/lib/supabase-client";
 import { OpenAI } from "openai";
 import { Buffer } from "buffer";
 
-// Use CommonJS require to avoid the PDF_FILE bundling issue
-// @ts-ignore
-const pdfParse: typeof import("pdf-parse") = require("pdf-parse");
-
 type SupabaseUser = { id: string };
 
 // 1) Extract user from Bearer token
@@ -64,6 +60,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
+  // require inside the handler to avoid bundler issues
+  // @ts-ignore
+  const pdfParse: typeof import("pdf-parse") = require("pdf-parse");
   const buffer = Buffer.from(await file.arrayBuffer());
   const { text } = await pdfParse(buffer);
 
