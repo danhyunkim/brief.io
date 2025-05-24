@@ -2,8 +2,11 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-client";
 import { OpenAI } from "openai";
-import pdfParse from "pdf-parse";
 import { Buffer } from "buffer";
+
+// Use CommonJS require to avoid the PDF_FILE bundling issue
+// @ts-ignore
+const pdfParse: typeof import("pdf-parse") = require("pdf-parse");
 
 type SupabaseUser = { id: string };
 
