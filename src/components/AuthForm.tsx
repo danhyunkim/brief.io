@@ -13,7 +13,13 @@ export function AuthForm() {
 
   const handleLogin = async () => {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({ email });
+    const { error } = await supabase.auth.signInWithOtp({ 
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth`,
+      },
+     });
+
     setLoading(false);
     if (error) setMessage(`Error: ${error.message}`);
     else setMessage("Check your email for the login link!");
@@ -27,6 +33,7 @@ export function AuthForm() {
         placeholder="your@email.com"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
+        required
       />
       <Button onClick={handleLogin} disabled={loading}>
         {loading ? "Sending..." : "Send Magic Link"}
