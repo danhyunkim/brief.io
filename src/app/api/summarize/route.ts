@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-client";
 import { OpenAI } from "openai";
+import pdfParse from "pdf-parse";
+import { Buffer } from "buffer";
 
 type SupabaseUser = { id: string };
 
@@ -59,7 +61,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  const { default: pdfParse } = await import("pdf-parse");
   const buffer = Buffer.from(await file.arrayBuffer());
   const { text } = await pdfParse(buffer);
 
