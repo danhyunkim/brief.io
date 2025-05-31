@@ -1,8 +1,6 @@
-// src/app/api/history/route.ts
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-client";
 import { getUserFromRequest } from "@/lib/auth";
-
 
 export async function GET(req: Request) {
   // 1) Authenticate user
@@ -10,6 +8,7 @@ export async function GET(req: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
   // 2) Fetch documents for this user, newest first
   const { data, error } = await supabase
     .from("documents")

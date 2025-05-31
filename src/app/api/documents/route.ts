@@ -1,44 +1,45 @@
-// src/app/api/documents/route.ts
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase-client";
+import { getUserFromRequest } from "@/lib/auth";
 
-// Extract user from Bearer token
-async function getUser(req: Request) {
-  const token = req.headers.get("authorization")?.replace("Bearer ", "");
-  if (!token) return null;
-  const { data, error } = await supabase.auth.getUser(token);
-  if (error || !data.user) return null;
-  return data.user;
-}
-
-// Check if user has an active subscription
-async function hasActiveSubscription(userId: string) {
-  const { count, error } = await supabase
-    .from("subscriptions")
-    .select("id", { head: true })
-    .eq("user_id", userId)
-    .eq("status", "active");
-  if (error) throw new Error(error.message);
-  return (count || 0) > 0;
+interface DocumentInsert {
+  filename: string;
+  summary: string;
+  risks: unknown[];
 }
 
 export async function GET(req: Request) {
-  const user = await getUser(req);
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = await getUserFromRequest(req);
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-  const { count, error } = await supabase
+  // Count how many documents this user has
+  const { count, error: countErr } = await supabase
     .from("documents")
     .select("id", { head: true, count: "exact" })
     .eq("user_id", user.id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (countErr) {
+    return NextResponse.json({ error: countErr.message }, { status: 500 });
+  }
 
-  const paid = await hasActiveSubscription(user.id);
+  // Check if the user has an active subscription
+  const { count: subCount, error: subErr } = await supabase
+    .from("subscriptions")
+    .select("id", { head: true, count: "exact" })
+    .eq("user_id", user.id)
+    .eq("status", "active");
+  if (subErr) {
+    return NextResponse.json({ error: subErr.message }, { status: 500 });
+  }
+
+  const paid = (subCount ?? 0) > 0;
   return NextResponse.json({ count: count ?? 0, paid });
 }
 
 export async function POST(req: Request) {
   try {
-    const user = await getUser(req);
+    const user = await getUserFromRequest(req);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -52,10 +53,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: countErr.message }, { status: 500 });
     }
 
-    const paid = await hasActiveSubscription(user.id);
+    // Check subscription status
+    const { count: subCount, error: subErr } = await supabase
+      .from("subscriptions")
+      .select("id", { head: true, count: "exact" })
+      .eq("user_id", user.id)
+      .eq("status", "active");
+    if (subErr) {
+      return NextResponse.json({ error: subErr.message }, { status: 500 });
+    }
+    const paid = (subCount ?? 0) > 0;
 
     // Enforce one free doc, then paywall
-    if ((docCount || 0) >= 1 && !paid) {
+    if ((docCount ?? 0) >= 1 && !paid) {
       return NextResponse.json(
         { error: "Paywall: Free tier used. Please upgrade or pay." },
         { status: 402 }
@@ -63,13 +73,14 @@ export async function POST(req: Request) {
     }
 
     // Validate request body
-    const { filename, summary, risks } = await req.json();
+    const body = (await req.json()) as DocumentInsert;
+    const { filename, summary, risks } = body;
     if (!filename || !summary || !risks) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
     // Insert the document record
-    const { data, error } = await supabase
+    const { data, error: insertErr } = await supabase
       .from("documents")
       .insert({
         user_id: user.id,
@@ -79,16 +90,13 @@ export async function POST(req: Request) {
       })
       .select()
       .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (insertErr) {
+      return NextResponse.json({ error: insertErr.message }, { status: 500 });
     }
 
     return NextResponse.json({ document: data });
-  } catch (err: unknown) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : String(err) },
-      { status: 500 }
-    );
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
